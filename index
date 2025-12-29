@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SmartStore Pro V5</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --primary: #2563eb; --slate: #64748b; --bg: #f8fafc; }
+    body { font-family: 'Outfit', sans-serif; background: var(--bg); color: #1e293b; padding-bottom: 90px; }
+
+    /* Premium UI Components */
+    .glass-nav { background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; display: flex; justify-content: space-around; padding: 12px; z-index: 1000; }
+    .nav-btn { border: none; background: none; color: var(--slate); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 600; }
+    .nav-btn.active { color: var(--primary); }
+    
+    .product-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; transition: 0.3s; height: 100%; position: relative; }
+    .product-card:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+
+    .cart-badge { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; width: 55px; height: 55px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 8px 15px rgba(37, 99, 235, 0.3); z-index: 1001; border: none; }
+    
+    .list-row { background: white; border-radius: 15px; padding: 15px; margin-bottom: 10px; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+
+    .login-container { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); }
+    .login-card { background: white; padding: 40px; border-radius: 30px; width: 90%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+
+<div id="login-screen" class="login-container">
+    <div class="login-card text-center animate__animated animate__fadeIn">
+        <h2 class="fw-bold mb-1">SmartStore</h2>
+        <p class="text-muted mb-4">Enterprise Quotation Manager</p>
+        <input type="number" id="l-mobile" class="form-control form-control-lg rounded-pill text-center mb-4 border-2" placeholder="Enter Mobile Number">
+        <button onclick="login()" id="login-btn" class="btn btn-primary w-100 py-3 rounded-pill fw-bold">Login to Portal</button>
+    </div>
+</div>
+
+<div id="app-screen" style="display:none;">
+    <header class="container pt-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold m-0" id="v-title">Product Catalog</h4>
+            <div class="btn-group bg-white p-1 rounded-3 shadow-sm">
+                <button class="btn btn-sm btn-light" onclick="setLayout('grid')"><i class="bi bi-grid"></i></button>
+                <button class="btn btn-sm btn-light" onclick="setLayout('list')"><i class="bi bi-list"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="tab-cat">
+            <div class="input-group bg-white rounded-pill border p-1 mb-4 shadow-sm">
+                <span class="input-group-text bg-transparent border-0"><i class="bi bi-search ms-2 text-primary"></i></span>
+                <input type="text" id="search" class="form-control border-0" placeholder="Search items..." onkeyup="renderCatalog()">
+            </div>
+            <div id="catalog-render" class="row g-3"></div>
+        </div>
+
+        <div id="tab-his" style="display:none;">
+            <div id="history-render" class="row g-3"></div>
+        </div>
+    </main>
+
+    <nav class="glass-nav">
+        <button class="nav-btn active" id="btn-cat" onclick="nav('cat')"><i class="bi bi-house-door-fill fs-4"></i><span>Home</span></button>
+        <button class="nav-btn" id="btn-his" onclick="nav('his')"><i class="bi bi-clock-history fs-4"></i><span>Quotes</span></button>
+        <button class="nav-btn" onclick="logout()"><i class="bi bi-box-arrow-right fs-4"></i><span>Exit</span></button>
+    </nav>
+</div>
+
+<button class="cart-badge" id="cart-fab" style="display:none;" onclick="showCart()">
+    <i class="bi bi-cart-check-fill"></i>
+    <span id="cart-dot" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 10px;">0</span>
+</button>
+
+<div class="offcanvas offcanvas-bottom h-75 rounded-top-5" id="cartDrawer">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="fw-bold m-0">Review Quotation</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div id="cart-items" class="mb-4"></div>
+        <div class="p-4 rounded-4 bg-light border">
+            <div class="d-flex justify-content-between h4 fw-bold text-primary mb-4">
+                <span>Grand Total:</span>
+                <span>Rs. <span id="final-amt">0</span></span>
+            </div>
+            <div class="row g-2">
+                <div class="col-12"><input type="text" id="p-name" class="form-control" placeholder="Client Name"></div>
+                <div class="col-6"><input type="text" id="p-gst" class="form-control" placeholder="Client GST"></div>
+                <div class="col-6"><input type="email" id="p-mail" class="form-control" placeholder="Client Email"></div>
+                <div class="col-12"><textarea id="p-addr" class="form-control" placeholder="Client Address"></textarea></div>
+                <div class="col-12"><input type="text" id="p-rem" class="form-control" placeholder="Remarks (e.g. Urgent Delivery)"></div>
+            </div>
+            <button onclick="saveQuotation()" id="subBtn" class="btn btn-primary w-100 py-3 mt-4 rounded-pill fw-bold">Generate PDF & Save</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+/** APP CONFIG **/
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwiTpLL-OQFoq5rUaTUAWHIMC9tebsWZ2rQLHbA01eRcS-Qd1J3nGSEoNb4OZzdcA3/exec"; // PASTE YOUR URL
+const COMPANY = {
+    name: "SHREE GANESH ENTERPRISES",
+    addr: "Building 45, Phase III, Industrial Hub, Delhi - 110020",
+    cont: "+91 98XXX-XXXXX | sales@shreeganesh.com",
+    gstin: "07ABCDE1234F1Z1",
+    terms: ["Price validity: 7 days", "100% advance payment", "Goods once sold not returnable"]
+};
+
+let store = []; let basket = {}; let user = ""; let ui = "grid"; let meta = {};
+
+// Persistence
+window.onload = () => {
+    const saved = localStorage.getItem('s_user');
+    if(saved) { document.getElementById('l-mobile').value = saved; login(); }
+};
+
+async function api(action, data) {
+    const r = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action, data }) });
+    return await r.json();
+}
+
+async function login() {
+    user = document.getElementById('l-mobile').value;
+    if(user.length < 10) return;
+    document.getElementById('login-btn').innerText = "Syncing...";
+    
+    try {
+        const res = await api("getAppData", { mobile: user });
+        store = res.items; meta = res.customer;
+        localStorage.setItem('s_user', user);
+        
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'block';
+        document.getElementById('cart-fab').style.display = 'flex';
+        
+        // Auto-fill
+        document.getElementById('p-name').value = meta.name;
+        document.getElementById('p-gst').value = meta.gst;
+        document.getElementById('p-mail').value = meta.email;
+        document.getElementById('p-addr').value = meta.address;
+        document.getElementById('p-rem').value = meta.remarks;
+        
+        renderCatalog();
+    } catch(e) {
+        Swal.fire('Error', 'Check Script URL Connection', 'error');
+        document.getElementById('login-btn').innerText = "Login to Portal";
+    }
+}
+
+function nav(tab) {
+    document.getElementById('tab-cat').style.display = tab === 'cat' ? 'block' : 'none';
+    document.getElementById('tab-his').style.display = tab === 'his' ? 'block' : 'none';
+    document.getElementById('btn-cat').classList.toggle('active', tab === 'cat');
+    document.getElementById('btn-his').classList.toggle('active', tab === 'his');
+    document.getElementById('v-title').innerText = tab === 'cat' ? "Catalog" : "History";
+    if(tab === 'his') renderHistory();
+}
+
+function setLayout(mode) { ui = mode; renderCatalog(); renderHistory(); }
+
+function renderCatalog() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const data = store.filter(i => i[0].toLowerCase().includes(q));
+    const html = data.map(i => {
+        const id = i[0].replace(/\s/g,'');
+        if(ui === 'grid') return `
+            <div class="col-6 col-md-4"><div class="product-card p-3 text-center">
+                <span class="badge bg-primary-light text-primary rounded-pill mb-2">${i[1]}</span>
+                <h6 class="fw-bold text-truncate">${i[0]}</h6>
+                <div class="text-primary fw-bold mb-1">Rs. ${i[3]}</div>
+                <small class="text-muted d-block mb-3">Unit: ${i[2]}</small>
+                <div class="d-flex gap-1 bg-light p-1 rounded-3">
+                    <input type="number" id="q-${id}" class="form-control form-control-sm border-0 bg-transparent text-center" value="1">
+                    <button onclick="add('${i[0]}',${i[3]},'${i[4]}',${i[5]},'${i[2]}')" class="btn btn-primary btn-sm rounded-3 w-100"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div></div>`;
+        return `
+            <div class="col-12"><div class="list-row shadow-sm">
+                <div><h6 class="fw-bold mb-0">${i[0]}</h6><small class="text-muted">${i[2]} | GST: ${i[5]}%</small></div>
+                <div class="d-flex gap-2 align-items-center"><b>Rs. ${i[3]}</b>
+                <input type="number" id="q-${id}" class="form-control form-control-sm" style="width:50px" value="1">
+                <button onclick="add('${i[0]}',${i[3]},'${i[4]}',${i[5]},'${i[2]}')" class="btn btn-primary btn-sm rounded-pill"><i class="bi bi-cart-plus"></i></button></div>
+            </div></div>`;
+    }).join('');
+    document.getElementById('catalog-render').innerHTML = html;
+}
+
+function add(n, p, hsn, gst, unit) {
+    let qty = parseInt(document.getElementById(`q-${n.replace(/\s/g,'')}`).value) || 1;
+    if(!basket[n]) basket[n] = { qty: 0, price: p, hsn: hsn, gst: gst, unit: unit };
+    basket[n].qty += qty;
+    updateCartUI();
+    Swal.fire({ toast:true, position:'top-end', icon:'success', title:'Added to Quote', showConfirmButton:false, timer:800 });
+}
+
+function updateCartUI() {
+    const keys = Object.keys(basket);
+    document.getElementById('cart-dot').innerText = keys.length;
+    let net = 0;
+    document.getElementById('cart-items').innerHTML = keys.map(k => {
+        let taxable = basket[k].qty * basket[k].price;
+        let taxAmt = (taxable * basket[k].gst) / 100;
+        net += (taxable + taxAmt);
+        return `<div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+            <div><b class="text-primary">${k}</b><br><small>${basket[k].qty} ${basket[k].unit} x Rs. ${basket[k].price}</small></div>
+            <div class="fw-bold">Rs. ${(taxable+taxAmt).toFixed(2)}</div>
+        </div>`;
+    }).join('');
+    document.getElementById('final-amt').innerText = Math.round(net);
+}
+
+function showCart() { new bootstrap.Offcanvas(document.getElementById('cartDrawer')).show(); }
+
+async function saveQuotation() {
+    const keys = Object.keys(basket);
+    if(!keys.length) return;
+    
+    let items = keys.map(k => `${k}(${basket[k].qty}|${basket[k].price}|${basket[k].hsn}|${basket[k].gst}|${basket[k].unit})`).join(', ');
+    let d = {
+        mobile: user, name: document.getElementById('p-name').value, customerGst: document.getElementById('p-gst').value,
+        email: document.getElementById('p-mail').value, address: document.getElementById('p-addr').value,
+        remarks: document.getElementById('p-rem').value, items: items, total: document.getElementById('final-amt').innerText
+    };
+    
+    document.getElementById('subBtn').innerText = "Processing...";
+    const res = await api("saveOrder", d);
+    pdf(res.id, d);
+    Swal.fire('Success', 'Quotation Saved & PDF Generated', 'success').then(() => location.reload());
+}
+
+/** ADVANCED PDF LOGIC **/
+function pdf(id, d) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    
+
+    // Company Header
+    doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(37, 99, 235);
+    doc.text(COMPANY.name, 105, 15, {align:"center"});
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100);
+    doc.text(COMPANY.addr, 105, 21, {align:"center"});
+    doc.text(`${COMPANY.cont} | GSTIN: ${COMPANY.gstin}`, 105, 26, {align:"center"});
+    doc.setDrawColor(37, 99, 235); doc.line(15, 30, 195, 30);
+
+    doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.setTextColor(40);
+    doc.text("SALE QUOTATION", 105, 42, {align:"center"});
+
+    // Party Info
+    doc.setFontSize(10); doc.text("CLIENT DETAILS:", 15, 55);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name: ${d.name}`, 15, 61);
+    doc.text(`GSTIN: ${d.customerGst || 'N/A'}`, 15, 66);
+    doc.text(`Addr: ${d.address}`, 15, 71, {maxWidth: 80});
+
+    doc.text(`No: ${id}`, 140, 61);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 140, 66);
+
+    const tableRows = d.items.split(', ').map(i => {
+        let [name, v] = i.split('(');
+        let [q, r, h, g, u] = v.replace(')', '').split('|');
+        let taxable = q * r;
+        let tax = (taxable * g) / 100;
+        return [name, h, `${q} ${u}`, r, g+"%", tax.toFixed(2), (taxable+tax).toFixed(2)];
+    });
+
+    doc.autoTable({
+        startY: 85,
+        head: [['Description', 'HSN', 'Qty/Unit', 'Rate', 'GST%', 'Tax', 'Total']],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235], fontSize: 9 },
+        foot: [['', '', '', '', '', 'GRAND TOTAL:', `Rs. ${d.total}/-`]],
+        footStyles: { fillColor: [240, 246, 255], textColor: [37, 99, 235], fontStyle: 'bold', fontSize: 11 }
+    });
+
+    let finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("Terms:", 15, finalY);
+    doc.setFontSize(8); doc.setFont("helvetica", "normal");
+    COMPANY.terms.forEach((t, i) => doc.text(`- ${t}`, 15, finalY + 5 + (i * 4)));
+
+    doc.save(`${id}_Quotation.pdf`);
+}
+
+function renderHistory() {
+    const h = meta.history || [];
+    if(!h.length) { document.getElementById('history-render').innerHTML = "<p class='text-center py-5'>No history found.</p>"; return; }
+    
+    document.getElementById('history-render').innerHTML = h.map(o => {
+        if(ui === 'grid') return `<div class="col-6 col-md-4"><div class="product-card p-3 shadow-sm">
+            <small class="badge bg-light text-dark mb-2">#${o.id.slice(-5)}</small>
+            <div class="h5 fw-bold text-primary">Rs. ${o.total}</div>
+            <small class="text-muted d-block mb-3">${o.date.split('T')[0]}</small>
+            <button class="btn btn-outline-primary btn-sm w-100 rounded-pill" onclick='pdf("${o.id}", ${JSON.stringify({name:meta.name, customerGst:meta.gst, address:meta.address, items:o.items, total:o.total})})'>Download PDF</button>
+        </div></div>`;
+        return `<div class="col-12"><div class="list-row shadow-sm">
+            <div><h6 class="fw-bold mb-0">${o.id}</h6><small>${o.date.split('T')[0]} | Rs. ${o.total}</small></div>
+            <button class="btn btn-sm btn-light border rounded-circle" onclick='pdf("${o.id}", ${JSON.stringify({name:meta.name, customerGst:meta.gst, address:meta.address, items:o.items, total:o.total})})'><i class="bi bi-download"></i></button>
+        </div></div>`;
+    }).join('');
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+</script>
+</body>
+</html>
